@@ -15,7 +15,6 @@ const user = process.env.DB_USER;
 const pass = process.env.DB_PASS;
 const dbName = "rommsyNestDB";
 
-
 // mongodb uri
 const uri = `mongodb+srv://${user}:${pass}@cluster0.nhr7u6w.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -28,18 +27,25 @@ const client = new MongoClient(uri, {
   },
 });
 
-
 async function run() {
   try {
     await client.connect();
-      const database = client.db(dbName);
+    const database = client.db(dbName);
     //   db collection
-      const usersCollection = database.collection("roomsynest");
+    const usersCollection = database.collection("roomsynest");
 
-    
-
-      await client.db("admin").command({ ping: 1 });
-      console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    //   GET ALL USER
+    app.get("/users", async (req, res) => {
+      const cursor = usersCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+      
+      
+    await client.db("admin").command({ ping: 1 });
+    console.log(
+      "Pinged your deployment. You successfully connected to MongoDB!"
+    );
   } finally {
   }
 }
@@ -52,5 +58,5 @@ app.get("/", (req, res) => {
 
 // Server start
 app.listen(port, () => {
-    console.log('server is serterted')
+  console.log("server is serterted");
 });
