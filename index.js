@@ -41,6 +41,13 @@ async function run() {
       res.send(result);
     });
 
+    //   GET USER BY ID
+    app.get("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const quary = { _id: new ObjectId(id) };
+      const result = await usersCollection.findOne(quary);
+      res.send(result);
+    });
 
     //   CREATE NEW USER
     app.post("/users", async (req, res) => {
