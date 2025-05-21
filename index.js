@@ -119,6 +119,61 @@ async function runServer() {
         res.status(500).send({ error: "Failed to fetch listings" });
       }
     });
+
+    // Delete user
+
+    app.delete("/roommate-listings/:id", async (req, res) => {
+      const id = req.params.id;
+
+      try {
+        const result = await roommateListingsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
+        if (result.deletedCount === 0) {
+          return res.status(404).send({ error: "Listing not found" });
+        }
+        res.send({ message: "Listing deleted successfully" });
+      } catch (err) {
+        res.status(500).send({ error: "Failed to delete listing" });
+      }
+    });
+
+
+    // Get user by ID
+    app.get("/roommate-listings/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const user = await roommateListingsCollection.findOne(query);
+        if (!user) {
+          return res.status(404).send({ error: "User not found" });
+        }
+        res.send(user);
+      } catch (err) {
+        res.status(500).send({ error: "Invalid ID format" });
+      }
+    });
+
+    // Update a listing by ID
+    app.put("/roommate-listings/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedData = req.body;
+
+      try {
+        const result = await roommateListingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
+
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ error: "Listing not found" });
+        }
+
+        res.send({ message: "Listing updated successfully" });
+      } catch (err) {
+        res.status(500).send({ error: "Failed to update listing" });
+      }
+    });
   } catch (err) {
     console.error("❌ Error connecting to MongoDB:", err);
   }
