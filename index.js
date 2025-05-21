@@ -6,19 +6,22 @@ const cors = require("cors");
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Middlewares
-app.use(cors());
+// === Middlewares ===
+app.use(
+  cors({
+    origin: "*",
+    credentials: true,
+  })
+);
 app.use(express.json());
 
-// Environment variables
+// === MongoDB Configuration ===
 const user = process.env.DB_USER;
 const pass = process.env.DB_PASS;
 const dbName = "rommsyNestDB";
-
-// mongodb uri
 const uri = `mongodb+srv://${user}:${pass}@cluster0.nhr7u6w.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
-// MongoDB Client
+// === MongoDB Client Setup ===
 const client = new MongoClient(uri, {
   serverApi: {
     version: ServerApiVersion.v1,
@@ -27,52 +30,104 @@ const client = new MongoClient(uri, {
   },
 });
 
-async function run() {
+async function runServer() {
   try {
-    await client.connect();
+    // await client.connect();
+    console.log("✅ Connected to MongoDB");
+
     const database = client.db(dbName);
-    //   db collection
-    const usersCollection = database.collection("roomsynest");
+    const usersCollection = database.collection("users");
+    const roommateListingsCollection = database.collection("posts");
 
-    //   GET ALL USER
+    // === Routes ===
+
+    // Root route
+    app.get("/", (req, res) => {
+      res.send("Rommsy Nest Server is Now Running!");
+    });
+
+    // Get all users
     app.get("/users", async (req, res) => {
-      const cursor = usersCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
+      try {
+        const users = await usersCollection.find().toArray();
+        res.send(users);
+      } catch (err) {
+        res.status(500).send({ error: "Failed to fetch users." });
+      }
     });
 
-    //   GET USER BY ID
+    // Get user by ID
     app.get("/users/:id", async (req, res) => {
-      const id = req.params.id;
-      const quary = { _id: new ObjectId(id) };
-      const result = await usersCollection.findOne(quary);
-      res.send(result);
+      try {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
+        const user = await usersCollection.findOne(query);
+        if (!user) {
+          return res.status(404).send({ error: "User not found" });
+        }
+        res.send(user);
+      } catch (err) {
+        res.status(500).send({ error: "Invalid ID format" });
+      }
     });
 
-    //   CREATE NEW USER
+    // Create new user
     app.post("/users", async (req, res) => {
-      const result = await usersCollection.insertOne(req.body);
-      res.send(result);
+      try {
+        const userData = req.body;
+        const result = await usersCollection.insertOne(userData);
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ error: "Failed to create user" });
+      }
     });
-      
-      
-      
 
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
-  } finally {
+    // USERS POST API
+    app.post("/roommate-listings", async (req, res) => {
+      try {
+        const listData = req.body;
+        const result = await roommateListingsCollection.insertOne(listData);
+        res.send(result);
+      } catch (err) {
+        res.status(500).send({ error: "Failed to listing" });
+      }
+    });
+
+    // get all listing
+
+    app.get("/roommate-listings", async (req, res) => {
+      try {
+        const result = await roommateListingsCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to get user" });
+      }
+    });
+
+    // get user by email
+
+    app.get("/my-listings", async (req, res) => {
+      const userEmail = req.query.email;
+
+      try {
+        const listings = await roommateListingsCollection
+          .find({ userEmail: userEmail })
+          .toArray();
+
+        res.send(listings);
+      } catch (err) {
+        res.status(500).send({ error: "Failed to fetch listings" });
+      }
+    });
+  } catch (err) {
+    console.error("❌ Error connecting to MongoDB:", err);
   }
 }
-run().catch(console.dir);
 
-// Root route
-app.get("/", (req, res) => {
-  res.send("Rommsy Nest Server is Now running!");
-});
+// Run server connection
+runServer().catch(console.dir);
 
-// Server start
+// === Start Server ===
 app.listen(port, () => {
-  console.log("server is serterted");
+  console.log(`🚀 Server is running on port ${port}`);
 });
