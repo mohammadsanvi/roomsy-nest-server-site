@@ -32,7 +32,7 @@ const client = new MongoClient(uri, {
 
 async function runServer() {
   try {
-    // await client.connect();
+    await client.connect();
     console.log("✅ Connected to MongoDB");
 
     const database = client.db(dbName);
@@ -41,7 +41,6 @@ async function runServer() {
 
     // === Routes ===
 
-    // Root route
     app.get("/", (req, res) => {
       res.send("Rommsy Nest Server is Now Running!");
     });
@@ -60,11 +59,8 @@ async function runServer() {
     app.get("/users/:id", async (req, res) => {
       try {
         const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const user = await usersCollection.findOne(query);
-        if (!user) {
-          return res.status(404).send({ error: "User not found" });
-        }
+        const user = await usersCollection.findOne({ _id: new ObjectId(id) });
+        if (!user) return res.status(404).send({ error: "User not found" });
         res.send(user);
       } catch (err) {
         res.status(500).send({ error: "Invalid ID format" });
@@ -82,53 +78,75 @@ async function runServer() {
       }
     });
 
-    // USERS POST API
+    // Create a new roommate listing
     app.post("/roommate-listings", async (req, res) => {
       try {
         const listData = req.body;
         const result = await roommateListingsCollection.insertOne(listData);
         res.send(result);
       } catch (err) {
-        res.status(500).send({ error: "Failed to listing" });
+        res.status(500).send({ error: "Failed to create listing" });
       }
     });
 
-    // get all listing
-
+    // Get all roommate listings
     app.get("/roommate-listings", async (req, res) => {
       try {
-        const result = await roommateListingsCollection.find().toArray();
-        res.send(result);
+        const listings = await roommateListingsCollection.find().toArray();
+        res.send(listings);
       } catch (error) {
-        res.status(500).send({ error: "Failed to get user" });
+        res.status(500).send({ error: "Failed to fetch listings" });
       }
     });
 
-    // get user by email
-
+    // Get listings by user email
     app.get("/my-listings", async (req, res) => {
       const userEmail = req.query.email;
-
       try {
         const listings = await roommateListingsCollection
-          .find({ userEmail: userEmail })
+          .find({ userEmail })
           .toArray();
-
         res.send(listings);
       } catch (err) {
         res.status(500).send({ error: "Failed to fetch listings" });
       }
     });
 
-    // Delete user
+    // Get single listing by ID
+    app.get("/roommate-listings/:id", async (req, res) => {
+      try {
+        const id = req.params.id;
+        const listing = await roommateListingsCollection.findOne({ _id: new ObjectId(id) });
+        if (!listing) return res.status(404).send({ error: "Listing not found" });
+        res.send(listing);
+      } catch (err) {
+        res.status(500).send({ error: "Invalid ID format" });
+      }
+    });
 
+    // Update listing by ID
+    app.put("/roommate-listings/:id", async (req, res) => {
+      const id = req.params.id;
+      const updatedData = req.body;
+      try {
+        const result = await roommateListingsCollection.updateOne(
+          { _id: new ObjectId(id) },
+          { $set: updatedData }
+        );
+        if (result.matchedCount === 0) {
+          return res.status(404).send({ error: "Listing not found" });
+        }
+        res.send({ message: "Listing updated successfully" });
+      } catch (err) {
+        res.status(500).send({ error: "Failed to update listing" });
+      }
+    });
+
+    // Delete listing by ID
     app.delete("/roommate-listings/:id", async (req, res) => {
       const id = req.params.id;
-
       try {
-        const result = await roommateListingsCollection.deleteOne({
-          _id: new ObjectId(id),
-        });
+        const result = await roommateListingsCollection.deleteOne({ _id: new ObjectId(id) });
         if (result.deletedCount === 0) {
           return res.status(404).send({ error: "Listing not found" });
         }
@@ -138,51 +156,50 @@ async function runServer() {
       }
     });
 
-
-    // Get user by ID
-    app.get("/roommate-listings/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
-        const query = { _id: new ObjectId(id) };
-        const user = await roommateListingsCollection.findOne(query);
-        if (!user) {
-          return res.status(404).send({ error: "User not found" });
-        }
-        res.send(user);
-      } catch (err) {
-        res.status(500).send({ error: "Invalid ID format" });
-      }
-    });
-
-    // Update a listing by ID
-    app.put("/roommate-listings/:id", async (req, res) => {
+    // PUT route to update likes directly
+    app.put("/listings/:id", async (req, res) => {
       const id = req.params.id;
-      const updatedData = req.body;
-
+      const { likes } = req.body;
       try {
         const result = await roommateListingsCollection.updateOne(
           { _id: new ObjectId(id) },
-          { $set: updatedData }
+          { $set: { likes } }
         );
-
-        if (result.matchedCount === 0) {
-          return res.status(404).send({ error: "Listing not found" });
-        }
-
-        res.send({ message: "Listing updated successfully" });
-      } catch (err) {
-        res.status(500).send({ error: "Failed to update listing" });
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ message: "Update failed", error });
       }
     });
+
+    // PATCH route to increment likes
+  app.patch("/listings/:id/like", async (req, res) => {
+  const listingId = req.params.id;
+
+  try {
+    await roommateListingsCollection.updateOne(
+      { _id: new ObjectId(listingId) },
+      { $inc: { likes: 1 } }
+    );
+
+    const updated = await roommateListingsCollection.findOne({
+      _id: new ObjectId(listingId),
+    });
+
+    res.status(200).json({ likes: updated.likes });
+  } catch (err) {
+    console.error("Error updating like:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
   } catch (err) {
     console.error("❌ Error connecting to MongoDB:", err);
   }
 }
 
-// Run server connection
 runServer().catch(console.dir);
 
-// === Start Server ===
+// Start server
 app.listen(port, () => {
   console.log(`🚀 Server is running on port ${port}`);
 });
