@@ -30,10 +30,11 @@ const client = new MongoClient(uri, {
   },
 });
 
+
 async function runServer() {
   try {
-    await client.connect();
-    console.log("✅ Connected to MongoDB");
+    // await client.connect();
+    // console.log("✅ Connected to MongoDB");
 
     const database = client.db(dbName);
     const usersCollection = database.collection("users");
@@ -171,6 +172,20 @@ async function runServer() {
       }
     });
 
+     app.get("/featured-roommates", async (req, res) => {
+  try {
+    const posts = await roommateListingsCollection
+      .find({ availability: "Available" })
+      .limit(6)
+      .toArray();
+
+    res.json(posts);
+  } catch (error) {
+    console.error("❌ Error fetching featured roommates:", error.message);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
     // PATCH route to increment likes
   app.patch("/listings/:id/like", async (req, res) => {
   const listingId = req.params.id;
@@ -195,7 +210,9 @@ async function runServer() {
   } catch (err) {
     console.error("❌ Error connecting to MongoDB:", err);
   }
+
 }
+
 
 runServer().catch(console.dir);
 
