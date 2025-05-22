@@ -34,7 +34,7 @@ const client = new MongoClient(uri, {
 async function runServer() {
   try {
     // await client.connect();
-    // console.log("✅ Connected to MongoDB");
+    // console.log("Connected to MongoDB");
 
     const database = client.db(dbName);
     const usersCollection = database.collection("users");
@@ -181,7 +181,7 @@ async function runServer() {
 
     res.json(posts);
   } catch (error) {
-    console.error("❌ Error fetching featured roommates:", error.message);
+    console.error("Error fetching featured roommates:", error.message);
     res.status(500).json({ error: "Server error" });
   }
 });
@@ -208,7 +208,7 @@ async function runServer() {
 });
 
   } catch (err) {
-    console.error("❌ Error connecting to MongoDB:", err);
+    console.error("Error connecting to MongoDB:", err);
   }
 
 }
@@ -218,5 +218,5 @@ runServer().catch(console.dir);
 
 // Start server
 app.listen(port, () => {
-  console.log(`🚀 Server is running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
 });
